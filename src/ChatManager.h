@@ -28,13 +28,16 @@ signals:
 
 private slots:
     void handleReply(QNetworkReply* reply);
+    void onSettingsChanged();
 
 private:
     void loadHistory();
     void saveHistory();
+    void updateFromSettings();
 
     QVector<ChatMessage> m_history;
     QNetworkAccessManager m_net;
-    QString m_model = "mistral-nemo:latest";                // Change to your Ollama model name
-    QString m_historyFile;                      // Absolute path to JSON history on disk
+    QString m_model;                     // Will be loaded from settings
+    QString m_serverUrl;                 // Will be loaded from settings
+    QString m_historyFile;               // Absolute path to JSON history on disk
 };

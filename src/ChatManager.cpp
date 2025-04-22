@@ -1,4 +1,5 @@
 #include "ChatManager.h"
+#include "SettingsManager.h"
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QJsonObject>
@@ -9,9 +10,30 @@ ChatManager::ChatManager(QObject* parent) : QObject(parent) {
     const QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir().mkpath(dataDir);
     m_historyFile = dataDir + "/ollama_chat_history.json";
+    
+    // Load settings
+    updateFromSettings();
+    
+    // Connect to settings changes
+    connect(&SettingsManager::instance(), &SettingsManager::settingsChanged, 
+            this, &ChatManager::onSettingsChanged);
+    
+    // Load chat history
     loadHistory();
 
+    // Connect network reply handler
     connect(&m_net, &QNetworkAccessManager::finished, this, &ChatManager::handleReply);
+}
+
+void ChatManager::updateFromSettings() {
+    // Get settings from the SettingsManager
+    m_model = SettingsManager::instance().defaultModel();
+    m_serverUrl = SettingsManager::instance().serverUrl();
+}
+
+void ChatManager::onSettingsChanged() {
+    // Update local settings when global settings change
+    updateFromSettings();
 }
 
 void ChatManager::loadHistory() {
@@ -58,8 +80,12 @@ void ChatManager::sendUserMessage(const QString& text) {
     }
     QJsonObject body{{"model", m_model}, {"messages", msgArr}};
 
-    QNetworkRequest req(QUrl("http://localhost:11434/api/chat"));
+    // Create request using server URL from settings
+    QUrl apiUrl(m_serverUrl + "/api/chat");
+    QNetworkRequest req(apiUrl);
     req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    
+    // Send request
     m_net.post(req, QJsonDocument(body).toJson());
 }
 
